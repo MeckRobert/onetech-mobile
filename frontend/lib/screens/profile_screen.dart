@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/styles.dart';
+import 'login_screen.dart';
 
 // Sub-screens imports
 import 'business_hub_screen.dart';
@@ -42,9 +43,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Fallback in case backend is offline
       _user = User(
         id: 1,
-        name: "John M. Doe",
-        email: "john.doe@onetech.com",
-        role: "Business Advisor",
+        name: "Meck M. Robert",
+        email: "meckrobert123@onetech.com",
+        role: "Seller",
         profileImage: "",
         isVerified: true,
       );
@@ -265,14 +266,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
 
                   // Other tiles: Payment Methods, Security, Help & Support
-                  _buildGeneralTile(Icons.payment_outlined, "Payment Methods"),
+                   _buildGeneralTile(Icons.payment_outlined, "Payment Methods"),
                   _buildGeneralTile(Icons.security_outlined, "Security"),
                   _buildGeneralTile(Icons.help_outline_rounded, "Help & Support"),
+                  const SizedBox(height: 8),
+                  _buildLogoutTile(context),
 
                   const SizedBox(height: 32),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildLogoutTile(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: AppStyles.cardDecoration.copyWith(
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.15), width: 1),
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 22),
+        title: Text(
+          "Logout",
+          style: AppStyles.bodyMain.copyWith(fontWeight: FontWeight.bold, color: Colors.redAccent),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.redAccent, size: 12),
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: AppStyles.cardBg,
+              title: Text("Logout", style: AppStyles.titleMedium),
+              content: Text("Are you sure you want to log out?", style: AppStyles.bodyMain),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancel", style: GoogleFonts.outfit(color: AppStyles.textMuted)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          return FadeTransition(opacity: animation, child: child);
+                        },
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  child: Text("Logout", style: GoogleFonts.outfit(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/styles.dart';
+import 'login_screen.dart';
 import 'navigation_hub.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -127,7 +128,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           onPressed: () {
                             Navigator.of(context).pushReplacement(
                               PageRouteBuilder(
-                                pageBuilder: (context, animation, secondaryAnimation) => const NavigationHub(),
+                                pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
                                 transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                   return FadeTransition(opacity: animation, child: child);
                                 },

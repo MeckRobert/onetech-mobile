@@ -121,8 +121,70 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+// RegisterRequest defines signup credentials payload
+type RegisterRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
+}
+
+// ForgotPasswordRequest defines password reset payload
+type ForgotPasswordRequest struct {
+	EmailOrPhone string `json:"email_or_phone"`
+}
+
 // AuthResponse defines successful login output
 type AuthResponse struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
 }
+
+// Business represents a business store account
+type Business struct {
+	BusinessID   int64  `json:"business_id"`
+	UserID       int64  `json:"user_id"`
+	BusinessName string `json:"business_name"`
+	Logo         string `json:"logo"`
+	Description  string `json:"description"`
+	Verified     bool   `json:"verified"`
+}
+
+// Product represents a business's inventory product
+type Product struct {
+	ProductID   int64   `json:"product_id"`
+	BusinessID  int64   `json:"business_id"`
+	Name        string  `json:"name"`
+	Price       float64 `json:"price"`
+	Stock       int     `json:"stock"`
+	Category    string  `json:"category"`
+	Description string  `json:"description"`
+	Images      string  `json:"images"`
+	Video       string  `json:"video"`
+	Featured    bool    `json:"featured"`
+	Promoted    bool    `json:"promoted"`
+	Status      string  `json:"status"`
+}
+
+// Marketplace represents the statistics and score for a product listed on the store's public board
+type Marketplace struct {
+	ListingID    int64   `json:"listing_id"`
+	ProductID    int64   `json:"product_id"`
+	RankingScore float64 `json:"ranking_score"`
+	Views        int     `json:"views"`
+	Likes        int     `json:"likes"`
+	Sales        int     `json:"sales"`
+}
+
+// MarketplaceItem represents a full listing on the marketplace containing product and vendor business details
+type MarketplaceItem struct {
+	ListingID    int64       `json:"listing_id"`
+	ProductID    int64       `json:"product_id"`
+	RankingScore float64     `json:"ranking_score"`
+	Views        int         `json:"views"`
+	Likes        int         `json:"likes"`
+	Sales        int         `json:"sales"`
+	Product      Product     `json:"product"`
+	Business     Business    `json:"business"`
+}
+

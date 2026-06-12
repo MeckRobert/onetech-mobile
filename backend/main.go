@@ -33,6 +33,8 @@ func main() {
 
 	// Auth routes
 	mux.HandleFunc("/api/login", handleLogin)
+	mux.HandleFunc("/api/register", handleRegister)
+	mux.HandleFunc("/api/forgot-password", handleForgotPassword)
 	mux.HandleFunc("/api/profile", handleProfile)
 
 	// Business routes
@@ -40,6 +42,10 @@ func main() {
 	mux.HandleFunc("/api/sales", handleSales)
 	mux.HandleFunc("/api/expenses", handleExpenses)
 	mux.HandleFunc("/api/analytics", handleAnalytics)
+	mux.HandleFunc("/api/businesses", handleBusinesses)
+	mux.HandleFunc("/api/products", handleProducts)
+	mux.HandleFunc("/api/marketplace", handleMarketplace)
+	mux.HandleFunc("/api/marketplace/interact", handleMarketplaceInteract)
 
 	// Growth routes
 	mux.HandleFunc("/api/chat-rooms", handleChatRooms)

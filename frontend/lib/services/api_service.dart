@@ -10,6 +10,15 @@ class ApiService {
   ApiService._internal();
 
   String get baseUrl {
+    if (kDebugMode) {
+      try {
+        if (!kIsWeb && Platform.isAndroid) {
+          return 'http://10.0.2.2:8080';
+        }
+      } catch (_) {}
+      return 'http://localhost:8080';
+    }
+
     if (kIsWeb) {
       return 'https://onetech-mobile.onrender.com';
     }
@@ -52,6 +61,21 @@ class ApiService {
   Future<User> login(String email, String password) async {
     final data = await _post('/api/login', {'email': email, 'password': password});
     return User.fromJson(data['user']);
+  }
+
+  Future<User> register(String name, String email, String phone, String password) async {
+    final data = await _post('/api/register', {
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'password': password,
+    });
+    return User.fromJson(data['user']);
+  }
+
+  Future<String> forgotPassword(String emailOrPhone) async {
+    final data = await _post('/api/forgot-password', {'email_or_phone': emailOrPhone});
+    return data['message'] ?? 'Password reset instructions sent.';
   }
 
   Future<User> fetchProfile() async {

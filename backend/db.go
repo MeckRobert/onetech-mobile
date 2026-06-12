@@ -108,6 +108,36 @@ func initDB() {
 			maturity_date DATETIME,
 			date_invested DATETIME
 		);`,
+		`CREATE TABLE IF NOT EXISTS businesses (
+			business_id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER,
+			business_name TEXT,
+			logo TEXT,
+			description TEXT,
+			verified INTEGER
+		);`,
+		`CREATE TABLE IF NOT EXISTS products (
+			product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+			business_id INTEGER,
+			name TEXT,
+			price REAL,
+			stock INTEGER,
+			category TEXT,
+			description TEXT,
+			images TEXT,
+			video TEXT,
+			featured INTEGER,
+			promoted INTEGER,
+			status TEXT
+		);`,
+		`CREATE TABLE IF NOT EXISTS marketplace (
+			listing_id INTEGER PRIMARY KEY AUTOINCREMENT,
+			product_id INTEGER,
+			ranking_score REAL,
+			views INTEGER,
+			likes INTEGER,
+			sales INTEGER
+		);`,
 	}
 
 	for _, q := range queries {
@@ -337,6 +367,84 @@ func seedData() {
 			1, 1, "Treasury Bond 2027", 5250000, 12.5, 656250, time.Now().AddDate(2, 0, 0), time.Now().AddDate(-1, 0, 0))
 		if err != nil {
 			log.Fatalf("Failed to seed user investment: %v", err)
+		}
+	}
+
+	// Seed Business
+	err = db.QueryRow("SELECT COUNT(*) FROM businesses").Scan(&count)
+	if err != nil {
+		log.Fatalf("Failed to check businesses count: %v", err)
+	}
+	if count == 0 {
+		_, err = db.Exec(`INSERT INTO businesses (business_id, user_id, business_name, logo, description, verified)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			1, 1, "Doe Tech Store", "", "Official storefront of John M. Doe's premium smart devices and solutions.", 1)
+		if err != nil {
+			log.Fatalf("Failed to seed business: %v", err)
+		}
+	}
+
+	// Seed Products
+	err = db.QueryRow("SELECT COUNT(*) FROM products").Scan(&count)
+	if err != nil {
+		log.Fatalf("Failed to check products count: %v", err)
+	}
+	if count == 0 {
+		productsList := []struct {
+			id       int
+			bizID    int
+			name     string
+			price    float64
+			stock    int
+			cat      string
+			desc     string
+			images   string
+			featured int
+			promoted int
+		}{
+			{1, 1, "Smart Watch Series X", 200000, 50, "Electronics", "High quality smart watch with premium design, health monitoring sensors, AMOLED customizable watch faces, and 10 days battery life. Built with stainless steel casing.", "⌚", 1, 1},
+			{2, 1, "Organic Honey 500ml", 15000, 100, "Food", "100% pure organic raw honey harvested from natural forests.", "🍯", 0, 0},
+			{3, 1, "Fresh Tomato Box", 10000, 75, "Food", "Freshly picked organic tomatoes directly from Morogoro farms.", "🍅", 0, 0},
+			{4, 1, "Seedlings Kit", 25000, 30, "Agriculture", "Premium seedling starter kit containing coco peat, trays, and various organic seeds.", "🌱", 1, 0},
+		}
+
+		for _, p := range productsList {
+			_, err = db.Exec(`INSERT INTO products (product_id, business_id, name, price, stock, category, description, images, video, featured, promoted, status)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				p.id, p.bizID, p.name, p.price, p.stock, p.cat, p.desc, p.images, "", p.featured, p.promoted, "Active")
+			if err != nil {
+				log.Fatalf("Failed to seed product %s: %v", p.name, err)
+			}
+		}
+	}
+
+	// Seed Marketplace
+	err = db.QueryRow("SELECT COUNT(*) FROM marketplace").Scan(&count)
+	if err != nil {
+		log.Fatalf("Failed to check marketplace count: %v", err)
+	}
+	if count == 0 {
+		listings := []struct {
+			id     int
+			prodID int
+			score  float64
+			views  int
+			likes  int
+			sales  int
+		}{
+			{1, 1, 4.9, 2300, 450, 350},
+			{2, 2, 4.8, 1200, 180, 95},
+			{3, 3, 4.6, 850, 92, 60},
+			{4, 4, 4.7, 1500, 210, 110},
+		}
+
+		for _, l := range listings {
+			_, err = db.Exec(`INSERT INTO marketplace (listing_id, product_id, ranking_score, views, likes, sales)
+				VALUES (?, ?, ?, ?, ?, ?)`,
+				l.id, l.prodID, l.score, l.views, l.likes, l.sales)
+			if err != nil {
+				log.Fatalf("Failed to seed marketplace listing: %v", err)
+			}
 		}
 	}
 }

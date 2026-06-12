@@ -1,8 +1,10 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -50,6 +52,83 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, AuthResponse{
 		Token: "onetech-mock-jwt-token-123456",
 		User:  user,
+	})
+}
+
+// Register
+func handleRegister(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.Name == "" || req.Email == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "Name, email, and password are required")
+		return
+	}
+
+	// Insert user
+	res, err := db.Exec(`INSERT INTO users (name, email, password, role, profile_image, is_verified, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		req.Name, req.Email, req.Password, "Business Owner", "", 1, time.Now())
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			writeError(w, http.StatusConflict, "Email is already registered")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	id, _ := res.LastInsertId()
+
+	var user User
+	err = db.QueryRow(`SELECT id, name, email, role, profile_image, is_verified, created_at 
+		FROM users WHERE id = ?`, id).Scan(
+		&user.ID, &user.Name, &user.Email, &user.Role, &user.ProfileImage, &user.IsVerified, &user.CreatedAt,
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Failed to retrieve registered user")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, AuthResponse{
+		Token: "onetech-mock-jwt-token-123456",
+		User:  user,
+	})
+}
+
+// Forgot Password
+func handleForgotPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req ForgotPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.EmailOrPhone == "" {
+		writeError(w, http.StatusBadRequest, "Email or phone is required")
+		return
+	}
+
+	// Check if user exists by email (simulate success regardless to prevent enumeration in production,
+	// but check if email looks like the seeded database emails)
+	var id int64
+	_ = db.QueryRow("SELECT id FROM users WHERE email = ?", req.EmailOrPhone).Scan(&id)
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Password reset instructions have been sent to " + req.EmailOrPhone,
 	})
 }
 
@@ -696,4 +775,196 @@ func handleAIChat(w http.ResponseWriter, r *http.Request) {
 // Utility random generator helper
 func randInt(min, max int) int {
 	return min + rand.Intn(max-min)
+}
+
+// Businesses Handlers
+func handleBusinesses(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		var b Business
+		err := db.QueryRow(`SELECT business_id, user_id, business_name, logo, description, verified 
+			FROM businesses WHERE user_id = 1`).Scan(
+			&b.BusinessID, &b.UserID, &b.BusinessName, &b.Logo, &b.Description, &b.Verified,
+		)
+		if err == sql.ErrNoRows {
+			writeJSON(w, http.StatusOK, nil)
+			return
+		} else if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, b)
+	case http.MethodPost:
+		var b Business
+		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+			writeError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+		b.UserID = 1 // Default to user 1
+		res, err := db.Exec(`INSERT INTO businesses (user_id, business_name, logo, description, verified) 
+			VALUES (?, ?, ?, ?, ?)`, b.UserID, b.BusinessName, b.Logo, b.Description, 1)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		id, _ := res.LastInsertId()
+		b.BusinessID = id
+		b.Verified = true
+		writeJSON(w, http.StatusCreated, b)
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+// Products Handlers
+func handleProducts(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		rows, err := db.Query(`SELECT product_id, business_id, name, price, stock, category, description, images, video, featured, promoted, status 
+			FROM products WHERE business_id = 1 ORDER BY product_id DESC`)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defer rows.Close()
+
+		var products []Product
+		for rows.Next() {
+			var p Product
+			var featuredInt, promotedInt int
+			err := rows.Scan(
+				&p.ProductID, &p.BusinessID, &p.Name, &p.Price, &p.Stock, &p.Category,
+				&p.Description, &p.Images, &p.Video, &featuredInt, &promotedInt, &p.Status,
+			)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			p.Featured = featuredInt != 0
+			p.Promoted = promotedInt != 0
+			products = append(products, p)
+		}
+		writeJSON(w, http.StatusOK, products)
+	case http.MethodPost:
+		var p Product
+		if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+			writeError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+		p.BusinessID = 1 // Default to business 1
+		p.Status = "Active"
+
+		featuredInt := 0
+		if p.Featured {
+			featuredInt = 1
+		}
+		promotedInt := 0
+		if p.Promoted {
+			promotedInt = 1
+		}
+
+		res, err := db.Exec(`INSERT INTO products (business_id, name, price, stock, category, description, images, video, featured, promoted, status) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			p.BusinessID, p.Name, p.Price, p.Stock, p.Category, p.Description, p.Images, p.Video, featuredInt, promotedInt, p.Status)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		id, _ := res.LastInsertId()
+		p.ProductID = id
+
+		// Automatically list in marketplace
+		_, err = db.Exec(`INSERT INTO marketplace (product_id, ranking_score, views, likes, sales) 
+			VALUES (?, ?, ?, ?, ?)`, p.ProductID, 5.0, 0, 0, 0)
+		if err != nil {
+			log.Printf("Failed to insert marketplace entry: %v", err)
+		}
+
+		writeJSON(w, http.StatusCreated, p)
+	default:
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+// Marketplace Handlers
+func handleMarketplace(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	rows, err := db.Query(`
+		SELECT m.listing_id, m.product_id, m.ranking_score, m.views, m.likes, m.sales,
+		       p.product_id, p.business_id, p.name, p.price, p.stock, p.category, p.description, p.images, p.video, p.featured, p.promoted, p.status,
+		       b.business_id, b.user_id, b.business_name, b.logo, b.description, b.verified
+		FROM marketplace m
+		INNER JOIN products p ON m.product_id = p.product_id
+		INNER JOIN businesses b ON p.business_id = b.business_id
+		ORDER BY m.ranking_score DESC
+	`)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	var items []MarketplaceItem
+	for rows.Next() {
+		var item MarketplaceItem
+		var pFeaturedInt, pPromotedInt, bVerifiedInt int
+		err := rows.Scan(
+			&item.ListingID, &item.ProductID, &item.RankingScore, &item.Views, &item.Likes, &item.Sales,
+			&item.Product.ProductID, &item.Product.BusinessID, &item.Product.Name, &item.Product.Price, &item.Product.Stock, &item.Product.Category, &item.Product.Description, &item.Product.Images, &item.Product.Video, &pFeaturedInt, &pPromotedInt, &item.Product.Status,
+			&item.Business.BusinessID, &item.Business.UserID, &item.Business.BusinessName, &item.Business.Logo, &item.Business.Description, &bVerifiedInt,
+		)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		item.Product.Featured = pFeaturedInt != 0
+		item.Product.Promoted = pPromotedInt != 0
+		item.Business.Verified = bVerifiedInt != 0
+		items = append(items, item)
+	}
+
+	writeJSON(w, http.StatusOK, items)
+}
+
+// Marketplace interaction
+func handleMarketplaceInteract(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		ListingID int64  `json:"listing_id"`
+		Action    string `json:"action"` // "view", "like", "sale"
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	var query string
+	switch req.Action {
+	case "view":
+		query = "UPDATE marketplace SET views = views + 1 WHERE listing_id = ?"
+	case "like":
+		query = "UPDATE marketplace SET likes = likes + 1, ranking_score = MIN(5.0, ranking_score + 0.01) WHERE listing_id = ?"
+	case "sale":
+		query = "UPDATE marketplace SET sales = sales + 1, ranking_score = MIN(5.0, ranking_score + 0.05) WHERE listing_id = ?"
+	default:
+		writeError(w, http.StatusBadRequest, "Invalid interaction action")
+		return
+	}
+
+	_, err := db.Exec(query, req.ListingID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "success"})
 }
