@@ -11,23 +11,16 @@ class ApiService {
 
   String get baseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8080';
+      return 'https://onetech-mobile.onrender.com';
     }
 
     try {
       if (Platform.isAndroid) {
-        // For USB debugging with ADB reverse
-        return 'http://localhost:8080';
-
-        // Alternative: Use 10.0.2.2 for emulator
-        // return 'http://10.0.2.2:8080';
-
-        // For physical device without ADB reverse (WiFi)
-        // return 'http://192.168.100.16:8080';
+        return 'https://onetech-mobile.onrender.com';
       }
     } catch (_) {}
 
-    return 'http://localhost:8080';
+    return 'https://onetech-mobile.onrender.com';
   }
 
   // Common GET helper
