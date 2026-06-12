@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 )
 
 // CORSMiddleware adds CORS headers to all responses
@@ -51,12 +52,19 @@ func main() {
 	mux.HandleFunc("/api/advisor-cards", handleAdvisorCards)
 	mux.HandleFunc("/api/ai-chat", handleAIChat)
 
-	// Apply CORS
+	// Apply CORS middleware
 	handler := CORSMiddleware(mux)
 
+	// Get Render port
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("ONETECH backend running on port %s", port)
+
 	// Start server
-	log.Println("ONETECH backend listening on http://localhost:8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
